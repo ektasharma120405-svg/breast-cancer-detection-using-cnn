@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<!--
+  Breast Cancer Detection — result.html
+  Prediction Result Page | Flask Jinja2 template
+  Place this file in your "templates/" folder
+  
+  Jinja2 variables expected from Flask:
+    {{ prediction }}   — "Benign" or "Malignant"
+    {{ confidence }}   — float 0-100 e.g. 94.72
+    {{ image_url }}    — URL or base64 string of uploaded image
+    {{ error }}        — (optional) error message string
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    {% if prediction %}Result — {{ prediction }} | CancerSight{% else %}Error | CancerSight{% endif %}
+  </title>
+
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── CSS Variables (match index.html) ──────────────────── */
+    :root {
+      --pink-deep:   #c2185b;
+      --pink-mid:    #e91e8c;
+      --pink-soft:   #fce4ec;
+      --pink-pale:   #fff0f6;
+      --blue-soft:   #e3f2fd;
+      --blue-mid:    #1565c0;
+      --teal:        #00838f;
+      --green:       #2e7d32;
+      --green-lt:    #e8f5e9;
+      --green-mid:   #43a047;
+      --red:         #c62828;
+      --red-lt:      #ffebee;
+      --red-mid:     #e53935;
+      --white:       #ffffff;
+      --off-white:   #fafafa;
+      --gray-lt:     #f5f5f5;
+      --gray:        #757575;
+      --dark:        #1a1a2e;
+      --text:        #2d2d2d;
+      --radius-lg:   18px;
+      --radius-xl:   28px;
+      --shadow-soft: 0 4px 24px rgba(194,24,91,0.08);
+      --shadow-card: 0 2px 16px rgba(0,0,0,0.07);
+      --transition:  0.3s cubic-bezier(0.4,0,0.2,1);
+
+      /* Dynamically overridden by Jinja/JS */
+      --result-color: var(--pink-deep);
+      --result-lt:    var(--pink-soft);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--off-white);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6 { font-family: 'DM Serif Display', serif; }
+
+    /* ─── Navbar ─────────────────────────────────────────────── */
+    .navbar {
+      background: var(--white);
+      border-bottom: 1px solid rgba(194,24,91,0.1);
+      padding: 0.85rem 0;
+      position: sticky; top: 0; z-index: 1000;
+      box-shadow: 0 2px 20px rgba(194,24,91,0.06);
+    }
+
+    .navbar-brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.4rem;
+      color: var(--pink-deep) !important;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .brand-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--pink-deep), var(--pink-mid));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 1rem;
+    }
+
+    .nav-link {
+      font-weight: 500; color: var(--text) !important;
+      padding: 0.4rem 1rem !important;
+      border-radius: 8px;
+      transition: var(--transition);
+    }
+
+    .nav-link:hover {
+      background: var(--pink-pale);
+      color: var(--pink-deep) !important;
+    }
+
+    /* ─── Result Header Banner ───────────────────────────────── */
+    .result-banner {
+      padding: 2.5rem 0 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-banner.benign {
+      background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 60%, #e0f7fa 100%);
+    }
+
+    .result-banner.malignant {
+      background: linear-gradient(135deg, #ffebee 0%, #fce4ec 60%, #fff8e1 100%);
+    }
+
+    .result-banner.error-bg {
+      background: linear-gradient(135deg, #f5f5f5, #eeeeee);
+    }
+
+    .result-banner::before {
+      content: '';
+      position: absolute; top: -40px; right: -60px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      animation: pulse-bg 5s ease-in-out infinite;
+    }
+
+    .result-banner.benign::before {
+      background: radial-gradient(circle, rgba(46,125,50,0.1), transparent 70%);
+    }
+
+    .result-banner.malignant::before {
+      background: radial-gradient(circle, rgba(198,40,40,0.1), transparent 70%);
+    }
+
+    @keyframes pulse-bg {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.15); opacity: 0.6; }
+    }
+
+    .breadcrumb-row {
+      font-size: 0.82rem;
+      color: var(--gray);
+      margin-bottom: 1.5rem;
+    }
+
+    .breadcrumb-row a {
+      color: var(--pink-deep);
+      text-decoration: none;
+    }
+
+    .breadcrumb-row a:hover { text-decoration: underline; }
+
+    /* ─── Result Card ─────────────────────────────────────────── */
+    .result-section { padding: 3rem 0 4rem; }
+
+    .result-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+    }
+
+    /* Color strip at top of card */
+    .result-card-strip {
+      height: 6px;
+    }
+
+    .strip-benign   { background: linear-gradient(90deg, var(--green), var(--green-mid)); }
+    .strip-malignant{ background: linear-gradient(90deg, var(--red), var(--red-mid)); }
+    .strip-error    { background: linear-gradient(90deg, #9e9e9e, #bdbdbd); }
+
+    .result-card-body { padding: 2.5rem; }
+
+    /* Prediction Badge */
+    .prediction-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      border-radius: 16px;
+      padding: 0.8rem 2rem;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.6rem;
+      animation: badge-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;
+    }
+
+    @keyframes badge-pop {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .badge-benign {
+      background: var(--green-lt);
+      color: var(--green);
+      border: 2px solid rgba(46,125,50,0.2);
+    }
+
+    .badge-malignant {
+      background: var(--red-lt);
+      color: var(--red);
+      border: 2px solid rgba(198,40,40,0.2);
+    }
+
+    .result-subtitle {
+      color: var(--gray);
+      font-size: 0.95rem;
+      font-family: 'DM Sans', sans-serif;
+      margin-bottom: 2rem;
+    }
+
+    /* Confidence Bar */
+    .confidence-section { margin-bottom: 2rem; }
+
+    .confidence-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.85rem; font-weight: 500;
+      color: var(--dark); margin-bottom: 0.5rem;
+    }
+
+    .confidence-pct {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+    }
+
+    .confidence-bar-track {
+      height: 12px;
+      background: var(--gray-lt);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .confidence-bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      animation: bar-fill 1s cubic-bezier(0.4,0,0.2,1) 0.4s both;
+      transform-origin: left;
+    }
+
+    .bar-benign    { background: linear-gradient(90deg, var(--green), var(--green-mid)); }
+    .bar-malignant { background: linear-gradient(90deg, var(--red), var(--red-mid)); }
+
+    @keyframes bar-fill {
+      from { width: 0 !important; }
+    }
+
+    .confidence-note {
+      font-size: 0.78rem; color: var(--gray);
+      margin-top: 0.4rem;
+    }
+
+    /* Stat grid */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-box {
+      background: var(--gray-lt);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .stat-box-value {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem;
+      color: var(--dark);
+      line-height: 1;
+    }
+
+    .stat-box-label {
+      font-size: 0.72rem;
+      color: var(--gray);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 0.3rem;
+    }
+
+    /* ─── Image Panel ─────────────────────────────────────────── */
+    .image-panel {
+      background: var(--gray-lt);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .image-panel img {
+      width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      background: #111;
+      display: block;
+    }
+
+    .image-caption {
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      color: var(--gray);
+      display: flex; align-items: center; gap: 6px;
+      background: var(--white);
+      border-top: 1px solid rgba(0,0,0,0.06);
+    }
+
+    /* ─── Result Interpretation ──────────────────────────────── */
+    .interpretation-card {
+      border-radius: var(--radius-lg);
+      padding: 1.4rem 1.6rem;
+      margin-top: 1.5rem;
+    }
+
+    .interpretation-card.benign {
+      background: var(--green-lt);
+      border: 1px solid rgba(46,125,50,0.2);
+    }
+
+    .interpretation-card.malignant {
+      background: var(--red-lt);
+      border: 1px solid rgba(198,40,40,0.2);
+    }
+
+    .interpretation-card h6 {
+      font-size: 0.92rem;
+      margin-bottom: 0.5rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .interpretation-card.benign h6 { color: var(--green); }
+    .interpretation-card.malignant h6 { color: var(--red); }
+
+    .interpretation-card p {
+      font-size: 0.87rem;
+      color: var(--text);
+      margin: 0;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    /* ─── Sidebar (Result Page) ──────────────────────────────── */
+    .result-info-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(0,0,0,0.05);
+      margin-bottom: 1.2rem;
+    }
+
+    .result-info-card h6 {
+      font-size: 0.95rem; color: var(--dark);
+      margin-bottom: 0.8rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .metric-row {
+      display: flex; justify-content: space-between;
+      padding: 0.4rem 0;
+      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .metric-row:last-child { border-bottom: none; }
+
+    .metric-row span:first-child { color: var(--gray); }
+    .metric-row span:last-child  { font-weight: 600; color: var(--dark); }
+
+    /* ─── Action Buttons ─────────────────────────────────────── */
+    .btn-try-again {
+      background: linear-gradient(135deg, var(--pink-deep), var(--pink-mid));
+      color: white; border: none;
+      border-radius: 12px; padding: 0.8rem 1.8rem;
+      font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: var(--transition);
+      text-decoration: none; display: inline-flex;
+      align-items: center; gap: 8px;
+    }
+
+    .btn-try-again:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(194,24,91,0.35);
+      color: white;
+    }
+
+    .btn-outline-pink {
+      border: 2px solid var(--pink-deep);
+      color: var(--pink-deep);
+      border-radius: 12px; padding: 0.75rem 1.6rem;
+      font-size: 0.92rem; font-weight: 500;
+      cursor: pointer; transition: var(--transition);
+      background: none; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+
+    .btn-outline-pink:hover {
+      background: var(--pink-soft);
+      color: var(--pink-deep);
+    }
+
+    /* ─── Disclaimer ─────────────────────────────────────────── */
+    .disclaimer-result {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.2rem;
+      font-size: 0.82rem;
+      color: #5d4037;
+      display: flex; gap: 10px;
+      margin-top: 1.5rem;
+    }
+
+    /* ─── Error State ────────────────────────────────────────── */
+    .error-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: 3rem 2rem;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .error-icon {
+      width: 80px; height: 80px;
+      background: #ffebee;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; color: var(--red);
+      margin: 0 auto 1.2rem;
+    }
+
+    /* ─── Footer ─────────────────────────────────────────────── */
+    footer {
+      background: var(--dark);
+      color: rgba(255,255,255,0.6);
+      padding: 1.5rem 0;
+    }
+
+    .footer-bottom {
+      display: flex; justify-content: space-between;
+      font-size: 0.78rem; flex-wrap: wrap; gap: 0.5rem;
+    }
+
+    .footer-bottom a {
+      color: #f48fb1; text-decoration: none;
+    }
+
+    /* ─── Scroll animation ───────────────────────────────────── */
+    .fade-up {
+      opacity: 0; transform: translateY(20px);
+      transition: 0.6s ease;
+    }
+    .fade-up.visible {
+      opacity: 1; transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ════════════════════════════════════
+       NAVBAR
+  ════════════════════════════════════ -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <div class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></div>
+        CancerSight
+      </a>
+      <div class="ms-auto">
+        <a href="/" class="nav-link d-inline-flex align-items-center gap-1">
+          <i class="bi bi-arrow-left"></i> Back to Home
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ════════════════════════════════════
+       CHECK FOR ERROR FIRST
+  ════════════════════════════════════ -->
+  {% if error %}
+  <!-- ─── Error State ─────────────────────────────────────── -->
+  <div class="result-banner error-bg">
+    <div class="container">
+      <div class="breadcrumb-row">
+        <a href="/">Home</a> › <span>Result</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="result-section">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-6">
+          <div class="error-card">
+            <div class="error-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <h4 style="color:var(--dark); margin-bottom:0.6rem;">Analysis Failed</h4>
+            <p style="color:var(--gray); font-size:0.92rem; margin-bottom:1.5rem;">
+              {{ error }}
+            </p>
+            <a href="/" class="btn-try-again">
+              <i class="bi bi-arrow-counterclockwise"></i> Try Again
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% else %}
+  <!-- ════════════════════════════════════
+       RESULT BANNER
+  ════════════════════════════════════ -->
+  <div class="result-banner {% if prediction == 'Benign' %}benign{% else %}malignant{% endif %}">
+    <div class="container">
+      <div class="breadcrumb-row">
+        <a href="/">Home</a> › <a href="/#upload">Upload</a> › <span>Analysis Result</span>
+      </div>
+      <p style="font-size:0.82rem; color:var(--gray); font-family:'DM Sans',sans-serif; margin:0;">
+        <i class="bi bi-clock me-1"></i>
+        Analysis completed successfully
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       RESULT SECTION
+  ════════════════════════════════════ -->
+  <section class="result-section">
+    <div class="container">
+      <div class="row g-4">
+
+        <!-- ── Main Result Card ── -->
+        <div class="col-lg-8 fade-up">
+          <div class="result-card">
+            <!-- Color strip -->
+            <div class="result-card-strip
+              {% if prediction == 'Benign' %}strip-benign{% else %}strip-malignant{% endif %}">
+            </div>
+
+            <div class="result-card-body">
+
+              <!-- Prediction Badge -->
+              <div>
+                <div class="prediction-badge
+                  {% if prediction == 'Benign' %}badge-benign{% else %}badge-malignant{% endif %}">
+                  {% if prediction == 'Benign' %}
+                    <i class="bi bi-check-circle-fill"></i>
+                  {% else %}
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                  {% endif %}
+                  {{ prediction }}
+                </div>
+              </div>
+              <p class="result-subtitle">
+                {% if prediction == 'Benign' %}
+                  The tissue sample shows characteristics consistent with a <strong>benign</strong> (non-cancerous) condition.
+                {% else %}
+                  The tissue sample shows characteristics consistent with a <strong>malignant</strong> (cancerous) condition.
+                {% endif %}
+              </p>
+
+              <!-- Confidence Bar -->
+              <div class="confidence-section">
+                <div class="confidence-label">
+                  <span>Confidence Score</span>
+                  <span class="confidence-pct
+                    {% if prediction == 'Benign' %}
+                      {% set conf_color = 'var(--green)' %}
+                    {% else %}
+                      {% set conf_color = 'var(--red)' %}
+                    {% endif %}"
+                    style="color:{% if prediction == 'Benign' %}var(--green){% else %}var(--red){% endif %};">
+                    {{ "%.2f"|format(confidence) }}%
+                  </span>
+                </div>
+                <div class="confidence-bar-track">
+                  <div class="confidence-bar-fill
+                    {% if prediction == 'Benign' %}bar-benign{% else %}bar-malignant{% endif %}"
+                    style="width: {{ confidence }}%;">
+                  </div>
+                </div>
+                <div class="confidence-note">
+                  {% if confidence >= 90 %}
+                    <i class="bi bi-check-circle text-success me-1"></i>High confidence prediction
+                  {% elif confidence >= 70 %}
+                    <i class="bi bi-dash-circle text-warning me-1"></i>Moderate confidence — clinical review recommended
+                  {% else %}
+                    <i class="bi bi-x-circle text-danger me-1"></i>Low confidence — manual pathology review strongly advised
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Model Metrics -->
+              <div class="stat-row">
+                <div class="stat-box">
+                  <div class="stat-box-value">98.36%</div>
+                  <div class="stat-box-label">Model Accuracy</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-box-value">0.9978</div>
+                  <div class="stat-box-label">ROC-AUC</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-box-value">0.9880</div>
+                  <div class="stat-box-label">F1 Score</div>
+                </div>
+              </div>
+
+              <!-- Uploaded Image -->
+              {% if image_url %}
+              <div class="image-panel">
+                <img src="{{ image_url }}" alt="Analyzed histopathology image" />
+                <div class="image-caption">
+                  <i class="bi bi-image"></i>
+                  Uploaded histopathology image — analyzed by EfficientNet model
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Interpretation -->
+              <div class="interpretation-card {% if prediction == 'Benign' %}benign{% else %}malignant{% endif %}">
+                {% if prediction == 'Benign' %}
+                  <h6>
+                    <i class="bi bi-check-circle-fill"></i>
+                    What does Benign mean?
+                  </h6>
+                  <p>
+                    A benign tumor is non-cancerous and does not invade nearby tissues or spread to other
+                    parts of the body. Benign breast conditions are common and are generally not life-threatening.
+                    However, continued monitoring by a medical professional is recommended.
+                  </p>
+                {% else %}
+                  <h6>
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    What does Malignant mean?
+                  </h6>
+                  <p>
+                    A malignant tumor is cancerous and can invade surrounding tissues and potentially spread
+                    (metastasize) to other parts of the body. This result requires urgent review by a qualified
+                    oncologist or pathologist. <strong>Do not delay seeking medical advice.</strong>
+                  </p>
+                {% endif %}
+              </div>
+
+              <!-- Disclaimer -->
+              <div class="disclaimer-result">
+                <i class="bi bi-shield-exclamation mt-1" style="font-size:1.1rem; flex-shrink:0;"></i>
+                <span>
+                  <strong>Important Disclaimer:</strong> This AI prediction is <strong>not a clinical diagnosis</strong>.
+                  It is an assistive tool only. Please consult a qualified pathologist, oncologist, or healthcare
+                  professional for proper medical evaluation and treatment decisions.
+                </span>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="d-flex gap-3 flex-wrap mt-3">
+                <a href="/" class="btn-try-again">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                  Analyze Another Image
+                </a>
+                <button onclick="window.print()" class="btn-outline-pink">
+                  <i class="bi bi-printer"></i>
+                  Print Result
+                </button>
+              </div>
+
+            </div><!-- /result-card-body -->
+          </div><!-- /result-card -->
+        </div>
+
+        <!-- ── Sidebar ── -->
+        <div class="col-lg-4 fade-up">
+
+          <!-- Quick Summary -->
+          <div class="result-info-card">
+            <h6>
+              <i class="bi bi-clipboard-data" style="color:var(--blue-mid);"></i>
+              Analysis Summary
+            </h6>
+            <div class="metric-row">
+              <span>Prediction</span>
+              <span style="color:{% if prediction == 'Benign' %}var(--green){% else %}var(--red){% endif %};">
+                {{ prediction }}
+              </span>
+            </div>
+            <div class="metric-row">
+              <span>Confidence</span>
+              <span>{{ "%.2f"|format(confidence) }}%</span>
+            </div>
+            <div class="metric-row">
+              <span>Model</span>
+              <span>EfficientNet</span>
+            </div>
+            <div class="metric-row">
+              <span>Image Type</span>
+              <span>Histopathology</span>
+            </div>
+            <div class="metric-row">
+              <span>Task</span>
+              <span>Binary Classification</span>
+            </div>
+          </div>
+
+          <!-- Model Validation Stats -->
+          <div class="result-info-card">
+            <h6>
+              <i class="bi bi-bar-chart" style="color:var(--teal);"></i>
+              Model Validation Stats
+            </h6>
+            <div class="metric-row">
+              <span>Accuracy</span>
+              <span>98.36%</span>
+            </div>
+            <div class="metric-row">
+              <span>Precision</span>
+              <span>0.9926</span>
+            </div>
+            <div class="metric-row">
+              <span>Recall</span>
+              <span>0.9834</span>
+            </div>
+            <div class="metric-row">
+              <span>F1 Score</span>
+              <span>0.9880</span>
+            </div>
+            <div class="metric-row">
+              <span>ROC-AUC</span>
+              <span>0.9978</span>
+            </div>
+          </div>
+
+          <!-- Next Steps -->
+          <div class="result-info-card">
+            <h6>
+              <i class="bi bi-list-check" style="color:var(--pink-deep);"></i>
+              Recommended Next Steps
+            </h6>
+            {% if prediction == 'Benign' %}
+            <ul style="list-style:none; padding:0; margin:0; font-size:0.85rem; color:var(--gray);">
+              <li style="padding:0.35rem 0; border-bottom:1px solid rgba(0,0,0,0.05); display:flex; gap:8px;">
+                <span style="color:var(--green);">✓</span> Share result with your doctor for confirmation
+              </li>
+              <li style="padding:0.35rem 0; border-bottom:1px solid rgba(0,0,0,0.05); display:flex; gap:8px;">
+                <span style="color:var(--green);">✓</span> Continue regular breast health monitoring
+              </li>
+              <li style="padding:0.35rem 0; display:flex; gap:8px;">
+                <span style="color:var(--green);">✓</span> Annual mammography as recommended
+              </li>
+            </ul>
+            {% else %}
+            <ul style="list-style:none; padding:0; margin:0; font-size:0.85rem; color:var(--gray);">
+              <li style="padding:0.35rem 0; border-bottom:1px solid rgba(0,0,0,0.05); display:flex; gap:8px;">
+                <span style="color:var(--red);">!</span> Seek urgent consultation with an oncologist
+              </li>
+              <li style="padding:0.35rem 0; border-bottom:1px solid rgba(0,0,0,0.05); display:flex; gap:8px;">
+                <span style="color:var(--red);">!</span> Request biopsy confirmation from a pathologist
+              </li>
+              <li style="padding:0.35rem 0; display:flex; gap:8px;">
+                <span style="color:var(--red);">!</span> Do not rely solely on this AI result
+              </li>
+            </ul>
+            {% endif %}
+          </div>
+
+        </div><!-- /sidebar col -->
+      </div><!-- /row -->
+    </div><!-- /container -->
+  </section>
+  {% endif %}
+
+  <!-- ════════════════════════════════════
+       FOOTER
+  ════════════════════════════════════ -->
+  <footer>
+    <div class="container">
+      <div class="footer-bottom">
+        <span>© 2025 CancerSight — B.Tech CSE Deep Learning Project</span>
+        <span>
+          <a href="/">← Back to Home</a>
+          &nbsp;|&nbsp; ⚠ For educational use only. Not a clinical diagnostic tool.
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // ─── Scroll Fade-up ────────────────────────────────────────
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // ─── Auto-trigger fade-up for above-fold elements ──────────
+    setTimeout(() => {
+      document.querySelectorAll('.fade-up').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight) el.classList.add('visible');
+      });
+    }, 100);
+  </script>
+</body>
+</html>
